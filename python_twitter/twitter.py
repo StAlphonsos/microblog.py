@@ -17,7 +17,7 @@
 '''A library that provides a python interface to the Twitter API'''
 
 __author__ = 'dewitt@google.com'
-__version__ = '0.7-devel'
+__version__ = '0.8' # attila@stalphonsos.com from 0.8+
 
 
 import base64
@@ -1468,24 +1468,35 @@ class Api(object):
 
     if geocode is not None:
       parameters['geocode'] = ','.join(map(str, geocode))
-
+    is_twit = self.base_url == 'https://twitter.com'
     # Make and send requests
-    url  = 'http://search.twitter.com/search.json'
+    if is_twit:
+      url  = 'http://search.twitter.com/search.json'
+      user_key = 'from_user'
+    else:
+      url = '%s/search.json' % self.base_url
+      user_key = 'user'
     json = self._FetchUrl(url, parameters=parameters)
     data = simplejson.loads(json)
-
     self._CheckForTwitterError(data)
+
+    if is_twit:
+      raw_results = data['results']
+    else:
+      raw_results = data
 
     results = []
 
-    for x in data['results']:
+    for (i,x) in enumerate(raw_results):
+      print "# search result#%d keys: %s" % (i, ', '.join(x.keys()))
       temp = Status.NewFromJsonDict(x)
-
       if query_users:
         # Build user object with new request
-        temp.user = self.GetUser(urllib.quote(x['from_user']))
+        temp.user = self.GetUser(urllib.quote(x[user_key]))
+      elif is_twit:
+        temp.user = User(screen_name=x[user_key], profile_image_url=x['profile_image_url'])
       else:
-        temp.user = User(screen_name=x['from_user'], profile_image_url=x['profile_image_url'])
+        temp.user = User(screen_name=x[user_key])
 
       results.append(temp)
 
@@ -2423,6 +2434,7 @@ class Api(object):
 
     # Add key/value parameters to the query string of the url
     url = self._BuildUrl(url, extra_params=extra_params)
+    print "# DEBUG: _FetchUrl: %s" % url
 
     # Get a url opener that can handle basic auth
     opener = self._GetOpener(url, username=self._username, password=self._password)

@@ -3,7 +3,9 @@
 identica/twitter/statusnet, see microblog.py --help for usage.
 
 """
+
 from python_twitter import twitter
+#import twitter
 import os
 import ConfigParser
 import optparse
